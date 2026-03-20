@@ -1,0 +1,2067 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人效率管理器</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary-color: #FFD700; /* 浅黄色 */
+            --secondary-color: #2196F3;
+            --accent-color: #FF6B6B;
+            --light-yellow: #FFF9C4; /* 浅黄底色 */
+            --light-blue: #E3F2FD;
+            --light-pink: #FFECEC;
+            --text-primary: #333;
+            --text-secondary: #666;
+            --card-bg: #fff;
+            --border-radius: 16px;
+            --shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #fdf6e3 0%, #f5f0dc 100%);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px 0;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .tabs {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .tab-btn {
+            padding: 12px 24px;
+            background: var(--card-bg);
+            border: 2px solid var(--primary-color);
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            color: var(--primary-color);
+        }
+
+        .tab-btn.active {
+            background: var(--primary-color);
+            color: #333;
+        }
+
+        .tab-btn:hover:not(.active) {
+            background: var(--light-yellow);
+        }
+
+        .tab-btn.active {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .tab-btn:hover:not(.active) {
+            background: var(--light-green);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 日历样式 */
+        .calendar-section {
+            background: var(--card-bg);
+            border-radius: var(--border-radius);
+            padding: 24px;
+            box-shadow: var(--shadow);
+            margin-bottom: 30px;
+        }
+
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .current-month {
+            font-size: 1.5rem;
+            font-weight: bold;
+            flex: 1;
+            text-align: center;
+        }
+
+        .nav-btn {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s ease;
+            min-width: 40px;
+            min-height: 40px;
+        }
+
+        .nav-btn:hover {
+            background: #45a049;
+        }
+
+        .today-btn {
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s ease;
+            min-width: 80px;
+            min-height: 40px;
+        }
+
+        .today-btn:hover {
+            background: #FF5252;
+        }
+
+        .week-view {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .month-view {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 8px;
+            margin-top: 20px;
+        }
+
+        .day-cell {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 12px 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+            min-height: 60px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .day-cell:hover {
+            background: var(--light-green);
+        }
+
+        .day-cell.selected {
+            border-color: var(--primary-color);
+            background: var(--light-green);
+            font-weight: bold;
+        }
+
+        /* 今日高亮样式 - 优先级最高 */
+        .day-cell.today {
+            background: linear-gradient(135deg, #FFF9C4, #FFECB3);
+            border: 2px solid #FFD700;
+            box-shadow: 0 2px 8px rgba(255, 215, 0, 0.3);
+            font-weight: bold;
+            color: #FF8F00;
+        }
+
+        /* 今日且选中的样式 */
+        .day-cell.today.selected {
+            background: linear-gradient(135deg, #FFECB3, #FFD700);
+            color: #333;
+            border-color: #FFD700;
+        }
+
+        .day-number {
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-bottom: 4px;
+            line-height: 1.2;
+        }
+
+        .day-tasks {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            width: 100%;
+            text-align: left;
+            padding: 0 4px;
+            line-height: 1.3;
+        }
+
+        .task-item-text {
+            display: block;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 2px;
+        }
+
+        .expand-btn {
+            text-align: center;
+            margin-top: 15px;
+        }
+
+        .expand-btn button {
+            background: none;
+            border: none;
+            color: var(--primary-color);
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+
+        .expand-btn button.expanded {
+            transform: rotate(180deg);
+        }
+
+        /* 任务列表样式 */
+        .tasks-section {
+            background: var(--card-bg);
+            border-radius: var(--border-radius);
+            padding: 24px;
+            box-shadow: var(--shadow);
+        }
+
+        .tasks-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .selected-date {
+            font-size: 1.3rem;
+            font-weight: bold;
+        }
+
+        .add-task-form {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .add-task-input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 12px;
+            font-size: 1rem;
+        }
+
+        .add-task-btn {
+            background: var(--primary-color);
+            color: #333;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s ease;
+        }
+
+        .add-task-btn:hover {
+            background: #FFC107;
+        }
+
+        .task-list {
+            list-style: none;
+        }
+
+        .task-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            margin-bottom: 10px;
+            background: var(--card-bg);
+            border-radius: 12px;
+            border: 2px solid #eee;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .task-item.completed {
+            opacity: 0.7;
+        }
+
+        .task-checkbox {
+            margin-right: 15px;
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .task-text {
+            flex: 1;
+            font-size: 1.1rem;
+        }
+
+        .task-text.completed {
+            text-decoration: line-through;
+            color: var(--text-secondary);
+        }
+
+        .task-actions {
+            display: flex;
+            gap: 8px;
+            /* 移动端默认隐藏，通过滑动显示 */
+        }
+
+        @media (max-width: 768px) {
+            .task-actions {
+                position: absolute;
+                right: 0;
+                top: 50%;
+                transform: translateY(-50%);
+                background: var(--light-pink);
+                border-radius: 0 12px 12px 0;
+                padding: 8px;
+                display: none;
+            }
+            
+            .task-item.swiped {
+                transform: translateX(-80px);
+            }
+            
+            .task-item.swiped .task-actions {
+                display: flex;
+            }
+        }
+
+        .task-action-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 1.1rem;
+            transition: color 0.3s ease;
+            min-width: 32px;
+            min-height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .task-action-btn:hover {
+            color: var(--primary-color);
+        }
+
+        /* 习惯打卡样式 */
+        .habits-section {
+            background: var(--card-bg);
+            border-radius: var(--border-radius);
+            padding: 24px;
+            box-shadow: var(--shadow);
+            margin-bottom: 30px;
+        }
+
+        .habits-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .habits-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .habit-card {
+            background: var(--light-yellow);
+            border-radius: var(--border-radius);
+            padding: 20px 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .habit-card.completed {
+            background: linear-gradient(45deg, var(--primary-color), #FFB300);
+            color: #333;
+            border-color: var(--primary-color);
+            transform: scale(1.05);
+        }
+
+        .habit-icon {
+            font-size: 2rem;
+            margin-bottom: 8px;
+        }
+
+        .habit-name {
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+
+        .add-habit-btn {
+            background: var(--secondary-color);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s ease;
+        }
+
+        .add-habit-btn:hover {
+            background: #1976D2;
+        }
+
+        /* 报表样式 */
+        .reports-section {
+            background: var(--card-bg);
+            border-radius: var(--border-radius);
+            padding: 24px;
+            box-shadow: var(--shadow);
+            margin-bottom: 30px;
+        }
+
+        .report-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .report-tab-btn {
+            padding: 10px 20px;
+            background: var(--card-bg);
+            border: 2px solid var(--accent-color);
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            color: var(--accent-color);
+            position: relative;
+        }
+
+        .report-tab-btn.active {
+            background: var(--accent-color);
+            color: white;
+        }
+
+        .report-tab-btn.active::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 20px;
+            height: 3px;
+            background: var(--accent-color);
+            border-radius: 2px;
+        }
+
+        .report-tab-btn:hover:not(.active) {
+            background: var(--light-pink);
+        }
+
+        .report-content {
+            display: none;
+        }
+
+        .report-content.active {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .period-selector {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .period-title {
+            font-family: 'Comic Sans MS', cursive, sans-serif;
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: var(--accent-color);
+            margin: 0 15px;
+            background: linear-gradient(45deg, #FFB6C1, #FF6B6B);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            position: relative;
+        }
+
+        .period-title::before,
+        .period-title::after {
+            content: '☀️';
+            position: absolute;
+            font-size: 1.2rem;
+        }
+
+        .period-title::before {
+            left: -30px;
+        }
+
+        .period-title::after {
+            right: -30px;
+            content: '🌙';
+        }
+
+        .period-nav-btn {
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .period-nav-btn:hover {
+            transform: scale(1.1);
+            background: #FF5252;
+        }
+
+        /* 周报表导航按钮特殊样式 */
+        .weekly-nav-btn {
+            background: var(--accent-color) !important;
+            width: 36px !important;
+            height: 36px !important;
+        }
+
+        .weekly-nav-btn:hover {
+            background: #FF5252 !important;
+        }
+
+        /* 周报表样式 */
+        .weekly-table-container {
+            overflow-x: auto;
+            margin-bottom: 20px;
+        }
+
+        .weekly-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+
+        .weekly-table th,
+        .weekly-table td {
+            padding: 12px 8px;
+            text-align: center;
+            border: 1px solid #eee;
+        }
+
+        .weekly-table th {
+            background: var(--light-pink);
+            font-weight: bold;
+            color: var(--accent-color);
+        }
+
+        .habit-name-cell {
+            text-align: left;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .habit-icon-cell {
+            font-size: 1.2rem;
+        }
+
+        .day-cell {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .day-cell.completed {
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .day-cell.empty {
+            background: #f5f5f5;
+        }
+
+        .perfect-badge {
+            background: #2196F3; /* 蓝色背景 */
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        /* 月报表样式 */
+        .monthly-cards-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .monthly-habit-card {
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            transition: transform 0.3s ease;
+        }
+
+        .monthly-habit-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .card-header {
+            padding: 15px;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-body {
+            padding: 20px;
+        }
+
+        .month-calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+            margin-bottom: 15px;
+        }
+
+        .month-day-cell {
+            width: 30px;
+            height: 30px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .month-day-cell.empty {
+            background: #f0f0f0;
+            color: #ccc;
+        }
+
+        .card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+        }
+
+        .progress-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .progress-ring {
+            width: 40px;
+            height: 40px;
+            position: relative;
+        }
+
+        .progress-ring-circle {
+            fill: none;
+            stroke: #e0e0e0;
+            stroke-width: 4;
+        }
+
+        .progress-ring-progress {
+            fill: none;
+            stroke-width: 4;
+            stroke-linecap: round;
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+        }
+
+        .progress-text {
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+
+        .days-count {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-weight: bold;
+            color: var(--text-primary);
+        }
+
+        .days-icon {
+            font-size: 1.2rem;
+        }
+
+        .perfect-text {
+            color: #888;
+            font-size: 0.8rem;
+            font-style: italic;
+        }
+
+        /* 年报表样式 */
+        .yearly-habits-list {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .yearly-habit-row {
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            padding: 20px;
+        }
+
+        .yearly-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .yearly-habit-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .yearly-stats {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .yearly-heatmap {
+            display: grid;
+            grid-template-columns: repeat(53, 1fr);
+            gap: 2px;
+            margin-top: 10px;
+        }
+
+        .heatmap-cell {
+            width: 8px;
+            height: 8px;
+            border-radius: 2px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .heatmap-cell.empty {
+            background: #f5f5f5;
+        }
+
+        /* 统计数据样式 */
+        .stats-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .stat-card {
+            background: var(--light-pink);
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--accent-color);
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .week-view, .month-view {
+                grid-template-columns: repeat(7, 1fr);
+                gap: 4px;
+            }
+            
+            .day-cell {
+                padding: 8px 4px;
+                min-height: 50px;
+            }
+            
+            .day-number {
+                font-size: 0.9rem;
+            }
+            
+            .day-tasks {
+                font-size: 0.65rem;
+            }
+            
+            .habits-grid {
+                grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+            }
+            
+            .habit-card {
+                padding: 15px 5px;
+            }
+            
+            .habit-icon {
+                font-size: 1.5rem;
+            }
+            
+            /* 增强移动端触控区域 */
+            .task-action-btn {
+                min-width: 36px;
+                min-height: 36px;
+                font-size: 1.3rem;
+            }
+            
+            .nav-btn, .today-btn {
+                min-width: 36px;
+                min-height: 36px;
+                padding: 6px 12px;
+                font-size: 0.9rem;
+            }
+            
+            .add-task-input {
+                font-size: 16px; /* 防止iOS缩放 */
+                padding: 14px;
+            }
+            
+            .add-task-btn {
+                padding: 14px 20px;
+                font-size: 1rem;
+            }
+            
+            .tab-btn {
+                padding: 14px;
+                font-size: 0.95rem;
+            }
+            
+            /* 月报表移动端 */
+            .monthly-cards-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            /* 年报表移动端 */
+            .yearly-heatmap {
+                grid-template-columns: repeat(53, 6px);
+            }
+            
+            .heatmap-cell {
+                width: 6px;
+                height: 6px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .tabs {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .tab-btn {
+                width: 100%;
+                max-width: 300px;
+            }
+            
+            .stats-cards, .stats-summary {
+                grid-template-columns: 1fr;
+            }
+            
+            /* 超小屏幕优化 */
+            .day-cell {
+                padding: 6px 2px;
+                min-height: 45px;
+            }
+            
+            .day-number {
+                font-size: 0.8rem;
+            }
+            
+            .day-name {
+                font-size: 0.7rem;
+            }
+            
+            .day-tasks {
+                font-size: 0.6rem;
+            }
+            
+            .habit-card {
+                padding: 12px 4px;
+            }
+            
+            .habit-icon {
+                font-size: 1.3rem;
+            }
+            
+            .habit-name {
+                font-size: 0.8rem;
+            }
+            
+            .selected-date {
+                font-size: 1.1rem;
+            }
+            
+            .chart-container {
+                height: 250px;
+            }
+            
+            .period-title {
+                font-size: 1.4rem;
+            }
+            
+            .period-title::before,
+            .period-title::after {
+                font-size: 1rem;
+            }
+            
+            .period-title::before {
+                left: -20px;
+            }
+            
+            .period-title::after {
+                right: -20px;
+            }
+        }
+        
+        /* 触控设备优化 */
+        @media (hover: none) and (pointer: coarse) {
+            .day-cell, .habit-card, .task-item, .tab-btn, .report-tab-btn {
+                transition: transform 0.1s ease;
+            }
+            
+            .day-cell:active, .habit-card:active, .tab-btn:active, .report-tab-btn:active {
+                transform: scale(0.98);
+            }
+            
+            .task-action-btn:active {
+                transform: scale(0.9);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>个人效率管理器</h1>
+            <p>管理待办事项 · 跟踪习惯打卡 · 回顾进展数据</p>
+        </header>
+
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="todo">待办清单</button>
+            <button class="tab-btn" data-tab="habits">习惯打卡</button>
+            <button class="tab-btn" data-tab="reports">多彩报表</button>
+            <button class="tab-btn" data-tab="statistics">数据统计</button>
+        </div>
+
+        <!-- 待办清单模块 -->
+        <div class="tab-content active" id="todo-tab">
+            <div class="calendar-section">
+                <div class="calendar-header">
+                    <button class="nav-btn" id="prev-month">&lt;</button>
+                    <div class="current-month" id="current-month">2026年3月</div>
+                    <button class="nav-btn" id="next-month">&gt;</button>
+                    <button class="today-btn" id="today-btn">回到今日</button>
+                </div>
+                <div class="week-view" id="week-view"></div>
+                <div class="expand-btn">
+                    <button id="toggle-month-view">▼</button>
+                </div>
+                <div class="month-view" id="month-view" style="display: none;"></div>
+            </div>
+
+            <div class="tasks-section">
+                <div class="tasks-header">
+                    <div class="selected-date" id="selected-date">2026年3月20日</div>
+                </div>
+                <div class="add-task-form">
+                    <input type="text" class="add-task-input" id="new-task-input" placeholder="输入新任务...">
+                    <button class="add-task-btn" id="add-task-btn">添加</button>
+                </div>
+                <ul class="task-list" id="task-list"></ul>
+            </div>
+        </div>
+
+        <!-- 习惯打卡模块 -->
+        <div class="tab-content" id="habits-tab">
+            <div class="habits-section">
+                <div class="habits-header">
+                    <h2>今日习惯打卡</h2>
+                    <button class="add-habit-btn" id="add-habit-btn">+ 添加习惯</button>
+                </div>
+                <div class="habits-grid" id="habits-grid"></div>
+            </div>
+        </div>
+
+        <!-- 多彩报表模块 -->
+        <div class="tab-content" id="reports-tab">
+            <div class="reports-section">
+                <div class="report-tabs">
+                    <button class="report-tab-btn active" data-report="weekly">周报</button>
+                    <button class="report-tab-btn" data-report="monthly">月报</button>
+                    <button class="report-tab-btn" data-report="yearly">年报</button>
+                </div>
+                
+                <!-- 周报表 -->
+                <div class="report-content active" id="weekly-report">
+                    <div class="period-selector">
+                        <button class="period-nav-btn weekly-nav-btn" id="weekly-prev">&lt;</button>
+                        <div class="period-title" id="weekly-period">03/16~03/22</div>
+                        <button class="period-nav-btn weekly-nav-btn" id="weekly-next">&gt;</button>
+                        <div class="example-badge">示例展示</div>
+                    </div>
+                    <div class="weekly-table-container">
+                        <table class="weekly-table">
+                            <thead>
+                                <tr>
+                                    <th>习惯</th>
+                                    <th>星期一</th>
+                                    <th>星期二</th>
+                                    <th>星期三</th>
+                                    <th>星期四</th>
+                                    <th>星期五</th>
+                                    <th>星期六</th>
+                                    <th>星期日</th>
+                                    <th>状态</th>
+                                </tr>
+                            </thead>
+                            <tbody id="weekly-table-body"></tbody>
+                        </table>
+                    </div>
+                    <div class="stats-summary" id="weekly-stats"></div>
+                </div>
+                
+                <!-- 月报表 -->
+                <div class="report-content" id="monthly-report">
+                    <div class="period-selector">
+                        <button class="period-nav-btn" id="monthly-prev">&lt;</button>
+                        <div class="period-title" id="monthly-period">2026年3月</div>
+                        <button class="period-nav-btn" id="monthly-next">&gt;</button>
+                        <div class="example-badge">示例展示</div>
+                    </div>
+                    <div class="monthly-cards-grid" id="monthly-cards-grid"></div>
+                </div>
+                
+                <!-- 年报表 -->
+                <div class="report-content" id="yearly-report">
+                    <div class="period-selector">
+                        <button class="period-nav-btn" id="yearly-prev">&lt;</button>
+                        <div class="period-title" id="yearly-period">2026年</div>
+                        <button class="period-nav-btn" id="yearly-next">&gt;</button>
+                        <div class="example-badge">示例展示</div>
+                    </div>
+                    <div class="yearly-habits-list" id="yearly-habits-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 数据统计模块 -->
+        <div class="tab-content" id="statistics-tab">
+            <div class="statistics-section">
+                <h2>全局数据统计</h2>
+                <div class="stats-cards">
+                    <div class="stat-category">
+                        <div class="category-title">任务统计</div>
+                        <div class="stat-value" id="total-tasks">0</div>
+                        <div class="stat-label">总任务数</div>
+                    </div>
+                    <div class="stat-category">
+                        <div class="category-title">完成率</div>
+                        <div class="stat-value" id="completion-rate">0%</div>
+                        <div class="stat-label">任务完成率</div>
+                    </div>
+                    <div class="stat-category">
+                        <div class="category-title">习惯打卡</div>
+                        <div class="stat-value" id="total-habits">0</div>
+                        <div class="stat-label">总打卡次数</div>
+                    </div>
+                    <div class="stat-category">
+                        <div class="category-title">连续记录</div>
+                        <div class="stat-value" id="streak-days">0</div>
+                        <div class="stat-label">最长连续天数</div>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="comparison-chart"></canvas>
+                </div>
+                <button class="export-btn" id="export-btn">导出数据</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 数据存储结构
+        let appData = {
+            tasks: {}, // 按日期存储任务 { '2026-03-20': [{id, text, completed}] }
+            habits: {}, // 按日期存储习惯打卡状态 { '2026-03-20': { habitId: true/false } }
+            habitList: [
+                { id: 'reading', name: '阅读📚', icon: '📚' },
+                { id: 'exercise', name: '运动🏃', icon: '🏃' },
+                { id: 'water', name: '喝水💧', icon: '💧' },
+                { id: 'sleep', name: '早睡🌙', icon: '🌙' },
+                { id: 'meditation', name: '冥想🧘', icon: '🧘' },
+                { id: 'english', name: '英语🔤', icon: '🔤' }
+            ],
+            currentSelectedDate: new Date().toISOString().split('T')[0],
+            lastResetDate: null
+        };
+
+        // 初始化应用
+        function initApp() {
+            loadData();
+            checkDailyReset();
+            renderCalendar();
+            renderTasks();
+            renderHabits();
+            setupEventListeners();
+            updateStatistics();
+            renderReport('weekly');
+            renderComparisonChart();
+        }
+
+        // 加载本地存储数据
+        function loadData() {
+            const savedData = localStorage.getItem('productivityAppData');
+            if (savedData) {
+                try {
+                    const parsedData = JSON.parse(savedData);
+                    appData.tasks = parsedData.tasks || {};
+                    appData.habits = parsedData.habits || {};
+                    appData.habitList = parsedData.habitList || appData.habitList;
+                    appData.lastResetDate = parsedData.lastResetDate || null;
+                } catch (e) {
+                    console.error('Failed to load data:', e);
+                }
+            }
+        }
+
+        // 保存数据到本地存储
+        function saveData() {
+            localStorage.setItem('productivityAppData', JSON.stringify({
+                tasks: appData.tasks,
+                habits: appData.habits,
+                habitList: appData.habitList,
+                lastResetDate: appData.lastResetDate
+            }));
+        }
+
+        // 检查每日重置
+        function checkDailyReset() {
+            const today = new Date().toISOString().split('T')[0];
+            if (appData.lastResetDate !== today) {
+                // 重置今天的习惯打卡状态（但保留历史记录）
+                if (!appData.habits[today]) {
+                    appData.habits[today] = {};
+                    appData.habitList.forEach(habit => {
+                        appData.habits[today][habit.id] = false;
+                    });
+                }
+                appData.lastResetDate = today;
+                appData.currentSelectedDate = today;
+                saveData();
+            }
+        }
+
+        // 渲染日历
+        function renderCalendar() {
+            const today = new Date(appData.currentSelectedDate);
+            const year = today.getFullYear();
+            const month = today.getMonth();
+            
+            // 更新月份显示
+            document.getElementById('current-month').textContent = `${year}年${month + 1}月`;
+            
+            // 渲染周视图（以周一为起始）
+            renderWeekView(today);
+            
+            // 渲染月视图
+            renderMonthView(year, month);
+        }
+
+        function renderWeekView(date) {
+            const weekView = document.getElementById('week-view');
+            weekView.innerHTML = '';
+            
+            // 找到本周的开始（周一）
+            const current = new Date(date);
+            const dayOfWeek = current.getDay(); // 0=周日, 1=周一, ..., 6=周六
+            const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+            const startOfWeek = new Date(current);
+            startOfWeek.setDate(current.getDate() + daysToMonday);
+            
+            const todayStr = new Date().toISOString().split('T')[0];
+            
+            for (let i = 0; i < 7; i++) {
+                const day = new Date(startOfWeek);
+                day.setDate(startOfWeek.getDate() + i);
+                const dayStr = day.toISOString().split('T')[0];
+                const dayName = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'][i];
+                const isSelected = dayStr === appData.currentSelectedDate;
+                const isToday = dayStr === todayStr;
+                
+                const dayCell = document.createElement('div');
+                dayCell.className = `day-cell ${isSelected ? 'selected' : ''} ${isToday ? 'today' : ''}`;
+                dayCell.dataset.date = dayStr;
+                dayCell.innerHTML = `
+                    <div class="day-number">${day.getDate()}</div>
+                    <div class="day-name">${dayName}</div>
+                `;
+                dayCell.addEventListener('click', () => selectDate(dayStr));
+                weekView.appendChild(dayCell);
+            }
+        }
+
+        function renderMonthView(year, month) {
+            const monthView = document.getElementById('month-view');
+            monthView.innerHTML = '';
+            
+            // 获取当月第一天
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const daysInMonth = lastDay.getDate();
+            
+            // 计算当月第一天是星期几 (0=周日, 1=周一, ..., 6=周六)
+            const firstDayOfWeek = firstDay.getDay();
+            // 计算从周一开始需要多少个空白单元格
+            const blankCells = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
+            
+            const todayStr = new Date().toISOString().split('T')[0];
+            
+            // 添加空白单元格（上个月的日期）
+            for (let i = 0; i < blankCells; i++) {
+                const emptyCell = document.createElement('div');
+                emptyCell.className = 'day-cell empty';
+                monthView.appendChild(emptyCell);
+            }
+            
+            // 添加当月日期（不显示任务信息，保持简约）
+            for (let day = 1; day <= daysInMonth; day++) {
+                const date = new Date(year, month, day);
+                const dayStr = date.toISOString().split('T')[0];
+                const isSelected = dayStr === appData.currentSelectedDate;
+                const isToday = dayStr === todayStr;
+                
+                const dayCell = document.createElement('div');
+                dayCell.className = `day-cell ${isSelected ? 'selected' : ''} ${isToday ? 'today' : ''}`;
+                dayCell.dataset.date = dayStr;
+                dayCell.innerHTML = `<div class="day-number">${day}</div>`;
+                dayCell.addEventListener('click', () => selectDate(dayStr));
+                monthView.appendChild(dayCell);
+            }
+        }
+
+        // 选择日期
+        function selectDate(dateStr) {
+            appData.currentSelectedDate = dateStr;
+            renderCalendar();
+            renderTasks();
+            updateSelectedDateDisplay();
+        }
+
+        // 回到今日功能
+        function goToToday() {
+            const today = new Date();
+            const todayStr = today.toISOString().split('T')[0];
+            appData.currentSelectedDate = todayStr;
+            
+            // 切换到今日所在的月份
+            renderCalendar();
+            renderTasks();
+            updateSelectedDateDisplay();
+            
+            // 确保月视图展开并滚动到今日
+            const monthView = document.getElementById('month-view');
+            if (monthView.style.display === 'none') {
+                monthView.style.display = 'grid';
+                document.getElementById('toggle-month-view').textContent = '▲';
+                document.getElementById('toggle-month-view').classList.add('expanded');
+            }
+            
+            // 滚动到今日日期（可选）
+            const todayCell = document.querySelector(`.day-cell[data-date="${todayStr}"]`);
+            if (todayCell) {
+                todayCell.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }
+
+        // 更新选中日期显示
+        function updateSelectedDateDisplay() {
+            const date = new Date(appData.currentSelectedDate);
+            const options = { year: 'numeric', month: 'long', day: 'numeric' };
+            document.getElementById('selected-date').textContent = date.toLocaleDateString('zh-CN', options);
+        }
+
+        // 渲染任务列表
+        function renderTasks() {
+            const taskList = document.getElementById('task-list');
+            taskList.innerHTML = '';
+            
+            const tasks = appData.tasks[appData.currentSelectedDate] || [];
+            
+            tasks.forEach(task => {
+                const taskItem = document.createElement('li');
+                taskItem.className = `task-item ${task.completed ? 'completed' : ''}`;
+                taskItem.dataset.taskId = task.id;
+                taskItem.innerHTML = `
+                    <input type="checkbox" class="task-checkbox" ${task.completed ? 'checked' : ''}>
+                    <span class="task-text ${task.completed ? 'completed' : ''}">${task.text}</span>
+                    <div class="task-actions">
+                        <button class="task-action-btn edit-btn">✏️</button>
+                        <button class="task-action-btn delete-btn">🗑️</button>
+                    </div>
+                `;
+                
+                const checkbox = taskItem.querySelector('.task-checkbox');
+                const editText = taskItem.querySelector('.task-text');
+                const editBtn = taskItem.querySelector('.edit-btn');
+                const deleteBtn = taskItem.querySelector('.delete-btn');
+                
+                checkbox.addEventListener('change', () => toggleTaskCompletion(task.id, checkbox.checked));
+                editBtn.addEventListener('click', () => editTask(task.id));
+                deleteBtn.addEventListener('click', () => deleteTask(task.id));
+                
+                // 添加移动端滑动支持
+                setupSwipeGesture(taskItem);
+                
+                taskList.appendChild(taskItem);
+            });
+        }
+
+        // 移动端滑动手势支持
+        function setupSwipeGesture(element) {
+            let startX = 0;
+            let currentX = 0;
+            let isSwiping = false;
+            
+            element.addEventListener('touchstart', (e) => {
+                if (window.innerWidth <= 768) {
+                    startX = e.touches[0].clientX;
+                    isSwiping = true;
+                    element.classList.remove('swiped');
+                }
+            });
+            
+            element.addEventListener('touchmove', (e) => {
+                if (!isSwiping) return;
+                
+                currentX = e.touches[0].clientX;
+                const diff = startX - currentX;
+                
+                if (diff > 30) {
+                    element.classList.add('swiped');
+                } else if (diff < 10) {
+                    element.classList.remove('swiped');
+                }
+            });
+            
+            element.addEventListener('touchend', () => {
+                isSwiping = false;
+            });
+            
+            // 防止在桌面端误触发
+            element.addEventListener('mousedown', (e) => {
+                if (window.innerWidth > 768) {
+                    // 桌面端保持原有行为
+                    return;
+                }
+            });
+        }
+
+        // 添加任务
+        function addTask(text) {
+            if (!text.trim()) return;
+            
+            const date = appData.currentSelectedDate;
+            if (!appData.tasks[date]) {
+                appData.tasks[date] = [];
+            }
+            
+            const newTask = {
+                id: Date.now().toString(),
+                text: text.trim(),
+                completed: false
+            };
+            
+            appData.tasks[date].push(newTask);
+            saveData();
+            renderTasks();
+            updateStatistics();
+        }
+
+        // 切换任务完成状态
+        function toggleTaskCompletion(taskId, completed) {
+            const tasks = appData.tasks[appData.currentSelectedDate];
+            if (tasks) {
+                const task = tasks.find(t => t.id === taskId);
+                if (task) {
+                    task.completed = completed;
+                    saveData();
+                    renderTasks();
+                    updateStatistics();
+                }
+            }
+        }
+
+        // 编辑任务
+        function editTask(taskId) {
+            const tasks = appData.tasks[appData.currentSelectedDate];
+            if (tasks) {
+                const task = tasks.find(t => t.id === taskId);
+                if (task) {
+                    const newText = prompt('编辑任务:', task.text);
+                    if (newText !== null && newText.trim()) {
+                        task.text = newText.trim();
+                        saveData();
+                        renderTasks();
+                    }
+                }
+            }
+        }
+
+        // 删除任务
+        function deleteTask(taskId) {
+            if (confirm('确定要删除这个任务吗？')) {
+                const tasks = appData.tasks[appData.currentSelectedDate];
+                if (tasks) {
+                    appData.tasks[appData.currentSelectedDate] = tasks.filter(t => t.id !== taskId);
+                    saveData();
+                    renderTasks();
+                    updateStatistics();
+                }
+            }
+        }
+
+        // 渲染习惯卡片
+        function renderHabits() {
+            const habitsGrid = document.getElementById('habits-grid');
+            habitsGrid.innerHTML = '';
+            
+            const today = new Date().toISOString().split('T')[0];
+            const todayHabits = appData.habits[today] || {};
+            
+            appData.habitList.forEach(habit => {
+                const isCompleted = todayHabits[habit.id] || false;
+                
+                const habitCard = document.createElement('div');
+                habitCard.className = `habit-card ${isCompleted ? 'completed' : ''}`;
+                habitCard.dataset.habitId = habit.id;
+                habitCard.innerHTML = `
+                    <div class="habit-icon">${habit.icon}</div>
+                    <div class="habit-name">${habit.name}</div>
+                `;
+                
+                habitCard.addEventListener('click', () => toggleHabit(habit.id));
+                habitsGrid.appendChild(habitCard);
+            });
+        }
+
+        // 切换习惯打卡状态
+        function toggleHabit(habitId) {
+            const today = new Date().toISOString().split('T')[0];
+            if (!appData.habits[today]) {
+                appData.habits[today] = {};
+                appData.habitList.forEach(h => {
+                    appData.habits[today][h.id] = false;
+                });
+            }
+            
+            appData.habits[today][habitId] = !appData.habits[today][habitId];
+            saveData();
+            renderHabits();
+            updateStatistics();
+        }
+
+        // 添加新习惯
+        function addNewHabit() {
+            const name = prompt('请输入习惯名称:');
+            const icon = prompt('请输入习惯图标 (如 📚 🏃 💧):', '✅');
+            
+            if (name && name.trim()) {
+                const newHabit = {
+                    id: `custom_${Date.now()}`,
+                    name: name.trim(),
+                    icon: icon || '✅'
+                };
+                appData.habitList.push(newHabit);
+                saveData();
+                renderHabits();
+            }
+        }
+
+        // 更新统计数据
+        function updateStatistics() {
+            // 计算任务统计
+            let totalTasks = 0;
+            let completedTasks = 0;
+            let longestStreak = 0;
+            let currentStreak = 0;
+            
+            Object.values(appData.tasks).forEach(tasks => {
+                totalTasks += tasks.length;
+                completedTasks += tasks.filter(t => t.completed).length;
+            });
+            
+            // 计算习惯统计
+            let totalHabits = 0;
+            const habitCounts = {};
+            
+            Object.values(appData.habits).forEach(dailyHabits => {
+                Object.values(dailyHabits).forEach(completed => {
+                    if (completed) {
+                        totalHabits++;
+                    }
+                });
+            });
+            
+            // 更新UI
+            document.getElementById('total-tasks').textContent = totalTasks;
+            document.getElementById('total-habits').textContent = totalHabits;
+            
+            const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+            document.getElementById('completion-rate').textContent = `${completionRate}%`;
+            
+            // 简单的连续天数计算（这里简化处理）
+            document.getElementById('streak-days').textContent = calculateStreakDays();
+        }
+
+        function calculateStreakDays() {
+            // 简化版：返回有数据的天数
+            const dates = new Set([...Object.keys(appData.tasks), ...Object.keys(appData.habits)]);
+            return dates.size;
+        }
+
+        // 渲染报表
+        let currentReportType = 'weekly';
+        let currentWeekStart = new Date();
+        currentWeekStart.setDate(currentWeekStart.getDate() - currentWeekStart.getDay());
+        let currentMonth = new Date().getMonth();
+        let currentYear = new Date().getFullYear();
+
+        function renderReport(reportType) {
+            currentReportType = reportType;
+            
+            // 隐藏所有报表内容
+            document.querySelectorAll('.report-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // 显示当前报表
+            document.getElementById(`${reportType}-report`).classList.add('active');
+            
+            switch (reportType) {
+                case 'weekly':
+                    renderWeeklyReport();
+                    break;
+                case 'monthly':
+                    renderMonthlyReport();
+                    break;
+                case 'yearly':
+                    renderYearlyReport();
+                    break;
+            }
+        }
+        
+        // 获取习惯颜色映射
+        function getHabitColor(habitId) {
+            const colors = {
+                'reading': '#FFD700',    // 阅读 - 浅黄色
+                'exercise': '#FF6B6B',   // 运动 - 红色
+                'water': '#2196F3',      // 喝水 - 蓝色
+                'sleep': '#9C27B0',      // 早睡 - 紫色
+                'meditation': '#FF9800', // 冥想 - 橙色
+                'english': '#00BCD4'     // 英语 - 青色
+            };
+            return colors[habitId] || '#757575';
+        }
+        
+        // 周报表渲染
+        function renderWeeklyReport() {
+            const weekStart = new Date(currentWeekStart);
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekEnd.getDate() + 6);
+            
+            // 更新周期显示
+            const startDateStr = `${(weekStart.getMonth() + 1).toString().padStart(2, '0')}/${weekStart.getDate().toString().padStart(2, '0')}`;
+            const endDateStr = `${(weekEnd.getMonth() + 1).toString().padStart(2, '0')}/${weekEnd.getDate().toString().padStart(2, '0')}`;
+            document.getElementById('weekly-period').textContent = `${startDateStr}~${endDateStr}`;
+            
+            // 渲染表格
+            const tableBody = document.getElementById('weekly-table-body');
+            tableBody.innerHTML = '';
+            
+            appData.habitList.forEach(habit => {
+                const row = document.createElement('tr');
+                const habitCell = document.createElement('td');
+                habitCell.className = 'habit-name-cell';
+                habitCell.innerHTML = `<span class="habit-icon-cell">${habit.icon}</span>${habit.name}`;
+                row.appendChild(habitCell);
+                
+                let perfectWeek = true;
+                const weekDays = [];
+                
+                for (let i = 0; i < 7; i++) {
+                    const date = new Date(weekStart);
+                    date.setDate(date.getDate() + i);
+                    const dateStr = date.toISOString().split('T')[0];
+                    const isCompleted = appData.habits[dateStr] && appData.habits[dateStr][habit.id];
+                    
+                    if (!isCompleted) {
+                        perfectWeek = false;
+                    }
+                    
+                    const dayCell = document.createElement('td');
+                    dayCell.className = `day-cell ${isCompleted ? 'completed' : 'empty'}`;
+                    if (isCompleted) {
+                        dayCell.style.backgroundColor = getHabitColor(habit.id);
+                    }
+                    dayCell.title = isCompleted ? '已打卡' : '未打卡';
+                    weekDays.push(dayCell);
+                }
+                
+                weekDays.forEach(cell => row.appendChild(cell));
+                
+                // 添加完美徽章
+                const statusCell = document.createElement('td');
+                if (perfectWeek) {
+                    statusCell.innerHTML = '<span class="perfect-badge">PERFECT</span>';
+                }
+                row.appendChild(statusCell);
+                
+                tableBody.appendChild(row);
+            });
+            
+            // 更新统计数据
+            updateWeeklyStats(weekStart);
+        }
+        
+        function updateWeeklyStats(weekStart) {
+            const statsContainer = document.getElementById('weekly-stats');
+            statsContainer.innerHTML = '';
+            
+            let totalDays = 7;
+            let completedDays = 0;
+            let perfectDays = 0;
+            let totalCompletions = 0;
+            let maxStreak = 0;
+            let currentStreak = 0;
+            
+            // 计算统计数据
+            for (let i = 0; i < 7; i++) {
+                const date = new Date(weekStart);
+                date.setDate(date.getDate() + i);
+                const dateStr = date.toISOString().split('T')[0];
+                const dailyHabits = appData.habits[dateStr] || {};
+                
+                let dayCompletedCount = 0;
+                appData.habitList.forEach(habit => {
+                    if (dailyHabits[habit.id]) {
+                        dayCompletedCount++;
+                        totalCompletions++;
+                    }
+                });
+                
+                if (dayCompletedCount === appData.habitList.length) {
+                    perfectDays++;
+                }
+                
+                if (dayCompletedCount > 0) {
+                    completedDays++;
+                    currentStreak++;
+                    maxStreak = Math.max(maxStreak, currentStreak);
+                } else {
+                    currentStreak = 0;
+                }
+            }
+            
+            const completionRate = Math.round((completedDays / totalDays) * 100);
+            
+            const stats = [
+                { value: `${completionRate}%`, label: '打卡率' },
+                { value: perfectDays, label: '完美打卡天数' },
+                { value: totalCompletions, label: '总完成次数' },
+                { value: maxStreak, label: '最高连续打卡天数' }
+            ];
+            
+            stats.forEach(stat => {
+                const statCard = document.createElement('div');
+                statCard.className = 'stat-card';
+                statCard.innerHTML = `
+                    <div class="stat-value">${stat.value}</div>
+                    <div class="stat-label">${stat.label}</div>
+                `;
+                statsContainer.appendChild(statCard);
+            });
+        }
+        
+        // 月报表渲染
+        function renderMonthlyReport() {
+            const monthDate = new Date(currentYear, currentMonth, 1);
+            document.getElementById('monthly-period').textContent = `${currentYear}年${currentMonth + 1}月`;
+            
+            const cardsGrid = document.getElementById('monthly-cards-grid');
+            cardsGrid.innerHTML = '';
+            
+            const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+            
+            appData.habitList.forEach(habit => {
+                const card = document.createElement('div');
+                card.className = 'monthly-habit-card';
+                
+                // 卡片头部
+                const header = document.createElement('div');
+                header.className = 'card-header';
+                header.style.background = getHabitColor(habit.id);
+                header.innerHTML = `<span class="habit-icon-cell">${habit.icon}</span>${habit.name}`;
+                
+                // 卡片主体 - 日历网格
+                const body = document.createElement('div');
+                body.className = 'card-body';
+                
+                const calendarGrid = document.createElement('div');
+                calendarGrid.className = 'month-calendar-grid';
+                
+                for (let day = 1; day <= daysInMonth; day++) {
+                    const dateStr = `${currentYear}-${(currentMonth + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+                    const isCompleted = appData.habits[dateStr] && appData.habits[dateStr][habit.id];
+                    
+                    const dayCell = document.createElement('div');
+                    dayCell.className = `month-day-cell ${isCompleted ? '' : 'empty'}`;
+                    dayCell.textContent = day;
+                    if (isCompleted) {
+                        dayCell.style.backgroundColor = getHabitColor(habit.id);
+                        dayCell.style.color = 'white';
+                    }
+                    dayCell.title = isCompleted ? '已打卡' : '未打卡';
+                    calendarGrid.appendChild(dayCell);
+                }
+                
+                body.appendChild(calendarGrid);
+                
+                // 卡片底部 - 进度和统计
+                const footer = document.createElement('div');
+                footer.className = 'card-footer';
+                
+                let completedDays = 0;
+                for (let day = 1; day <= daysInMonth; day++) {
+                    const dateStr = `${currentYear}-${(currentMonth + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+                    if (appData.habits[dateStr] && appData.habits[dateStr][habit.id]) {
+                        completedDays++;
+                    }
+                }
+                
+                const completionRate = Math.round((completedDays / daysInMonth) * 100);
+                const isPerfect = completedDays === daysInMonth;
+                
+                // 进度环（简化为文本）
+                const progressContainer = document.createElement('div');
+                progressContainer.className = 'progress-container';
+                progressContainer.innerHTML = `
+                    <div class="progress-text">${completionRate}%</div>
+                `;
+                
+                const daysContainer = document.createElement('div');
+                daysContainer.className = 'days-count';
+                daysContainer.innerHTML = `<span class="days-icon">📅</span>${completedDays}天`;
+                
+                footer.appendChild(progressContainer);
+                footer.appendChild(daysContainer);
+                
+                if (isPerfect) {
+                    const perfectText = document.createElement('div');
+                    perfectText.className = 'perfect-text';
+                    perfectText.textContent = 'PERFECT';
+                    footer.appendChild(perfectText);
+                }
+                
+                card.appendChild(header);
+                card.appendChild(body);
+                card.appendChild(footer);
+                cardsGrid.appendChild(card);
+            });
+        }
+        
+        // 年报表渲染
+        function renderYearlyReport() {
+            document.getElementById('yearly-period').textContent = `${currentYear}年`;
+            
+            const habitsList = document.getElementById('yearly-habits-list');
+            habitsList.innerHTML = '';
+            
+            appData.habitList.forEach(habit => {
+                const row = document.createElement('div');
+                row.className = 'yearly-habit-row';
+                
+                // 行头部
+                const header = document.createElement('div');
+                header.className = 'yearly-header';
+                
+                const habitInfo = document.createElement('div');
+                habitInfo.className = 'yearly-habit-info';
+                habitInfo.innerHTML = `<span class="habit-icon-cell">${habit.icon}</span>${habit.name}`;
+                
+                // 年度统计
+                let completedDays = 0;
+                const totalDays = isLeapYear(currentYear) ? 366 : 365;
+                
+                for (let day = 1; day <= totalDays; day++) {
+                    const date = new Date(currentYear, 0, day);
+                    const dateStr = date.toISOString().split('T')[0];
+                    if (appData.habits[dateStr] && appData.habits[dateStr][habit.id]) {
+                        completedDays++;
+                    }
+                }
+                
+                const completionRate = Math.round((completedDays / totalDays) * 100);
+                const isPerfect = completedDays === totalDays;
+                
+                const stats = document.createElement('div');
+                stats.className = 'yearly-stats';
+                stats.innerHTML = `
+                    <div class="progress-text">${completionRate}%</div>
+                    <div class="days-count"><span class="days-icon">📅</span>${completedDays}天</div>
+                `;
+                
+                header.appendChild(habitInfo);
+                header.appendChild(stats);
+                
+                // 热力图
+                const heatmap = document.createElement('div');
+                heatmap.className = 'yearly-heatmap';
+                
+                for (let day = 1; day <= totalDays; day++) {
+                    const date = new Date(currentYear, 0, day);
+                    const dateStr = date.toISOString().split('T')[0];
+                    const isCompleted = appData.habits[dateStr] && appData.habits[dateStr][habit.id];
+                    
+                    const cell = document.createElement('div');
+                    cell.className = `heatmap-cell ${isCompleted ? '' : 'empty'}`;
+                    if (isCompleted) {
+                        cell.style.backgroundColor = getHabitColor(habit.id);
+                    }
+                    cell.title = `${dateStr} ${isCompleted ? '已打卡' : '未打卡'}`;
+                    heatmap.appendChild(cell);
+                }
+                
+                row.appendChild(header);
+                row.appendChild(heatmap);
+                habitsList.appendChild(row);
+            });
+        }
+        
+        function isLeapYear(year) {
+            return (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
+        }
+        
+        // 渲染对比图表
+        let comparisonChart = null;
+        
+        function renderComparisonChart() {
+            const ctx = document.getElementById('comparison-chart').getContext('2d');
+            
+            if (comparisonChart) {
+                comparisonChart.destroy();
+            }
+            
+            const labels = ['第1周', '第2周', '第3周', '第4周'];
+            const tasksData = [10, 15, 12, 18];
+            const habitsData = [8, 12, 14, 16];
+            
+            comparisonChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: '任务完成量',
+                            data: tasksData,
+                            backgroundColor: '#4CAF50'
+                        },
+                        {
+                            label: '习惯打卡量',
+                            data: habitsData,
+                            backgroundColor: '#2196F3'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: '任务 vs 习惯 周度对比'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+        
+        // 导出数据
+        function exportData() {
+            const dataStr = JSON.stringify({
+                tasks: appData.tasks,
+                habits: appData.habits,
+                habitList: appData.habitList
+            }, null, 2);
+            
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'productivity_data.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+        
+        // 设置事件监听器
+        function setupEventListeners() {
+            // 标签切换
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                    btn.classList.add('active');
+                    document.getElementById(`${btn.dataset.tab}-tab`).classList.add('active');
+                });
+            });
+            
+            // 报表标签切换
+            document.querySelectorAll('.report-tab-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.report-tab-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    renderReport(btn.dataset.report);
+                });
+            });
+            
+            // 日历导航
+            document.getElementById('prev-month').addEventListener('click', () => {
+                const current = new Date(appData.currentSelectedDate);
+                current.setMonth(current.getMonth() - 1);
+                appData.currentSelectedDate = current.toISOString().split('T')[0];
+                renderCalendar();
+            });
+            
+            document.getElementById('next-month').addEventListener('click', () => {
+                const current = new Date(appData.currentSelectedDate);
+                current.setMonth(current.getMonth() + 1);
+                appData.currentSelectedDate = current.toISOString().split('T')[0];
+                renderCalendar();
+            });
+            
+            // 回到今日按钮
+            document.getElementById('today-btn').addEventListener('click', goToToday);
+            
+            // 切换月视图
+            document.getElementById('toggle-month-view').addEventListener('click', function() {
+                const monthView = document.getElementById('month-view');
+                const isExpanded = monthView.style.display === 'grid';
+                monthView.style.display = isExpanded ? 'none' : 'grid';
+                this.textContent = isExpanded ? '▼' : '▲';
+                this.classList.toggle('expanded', !isExpanded);
+            });
+            
+            // 添加任务
+            document.getElementById('add-task-btn').addEventListener('click', () => {
+                const input = document.getElementById('new-task-input');
+                addTask(input.value);
+                input.value = '';
+            });
+            
+            document.getElementById('new-task-input').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    addTask(e.target.value);
+                    e.target.value = '';
+                }
+            });
+            
+            // 添加习惯
+            document.getElementById('add-habit-btn').addEventListener('click', addNewHabit);
+            
+            // 导出数据
+            document.getElementById('export-btn').addEventListener('click', exportData);
+        }
+        
+        // 初始化应用
+        document.addEventListener('DOMContentLoaded', initApp);
+    </script>
+</body>
+</html>
